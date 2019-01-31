@@ -19,21 +19,62 @@ typedef struct __Searched{
     int * idx;
 }Searched;
 
+int FindToken(char * buf, int size){
+    int loop;
+    for(loop = 0; loop < size; loop++){
+        if(buf[loop] == '/'){
+            return loop;
+        }
+    }
+    
+    return -1;
+}
+
 int LoadFromFile(PhoneBook * phoneBook){
-    FILE * fp = fopen("PhoneBook.bin", "rb");
+    FILE * fp = fopen("PhoneBook.txt", "rt");
+    char buf[70];
+    char * str;
+    int tokIdx;
+    int loop;
     if(fp == NULL){
         return -1;
     }
-    fread((void*)phoneBook, sizeof(PhoneBook), 1, fp);
+    
+    fscanf(fp, "%d %d", &phoneBook->curCapacity, &phoneBook->content);
+    fgetc(fp);
+    
+    phoneBook->info = (PhoneInfo*)realloc((void*)phoneBook->info, sizeof(PhoneInfo)*phoneBook->curCapacity);
+    for(loop = 0; loop < phoneBook->content; loop++){
+        fgets(buf, sizeof(buf), fp);
+        tokIdx = FindToken(buf, sizeof(buf));
+        strncpy(phoneBook->info[loop].name, buf, tokIdx);
+        phoneBook->info[loop].name[tokIdx] = '\0';
+        str = &buf[tokIdx+1];
+        strcpy(phoneBook->info[loop].telNum, str);
+        phoneBook->info[loop].telNum[strlen(phoneBook->info[loop].telNum) - 1] = '\0';
+    }
+        
+    
+    fclose(fp);
     return 0;
 }
 
 int SaveToFile(PhoneBook * phoneBook){
-    FILE * fp = fopen("PhoneBook.bin", "wb");
+    FILE * fp = fopen("PhoneBook.txt", "wt");
+    int loop;
+    
     if(fp == NULL){
         return -1;
     }
-    fwrite((void*)phoneBook, sizeof(PhoneBook), 1, fp);
+    
+    fprintf(fp, "%d\n%d\n",phoneBook->curCapacity,phoneBook->content);
+    for(loop = 0; loop < phoneBook->content; loop++){
+        fputs(phoneBook->info[loop].name, fp);
+        fputc('/', fp);
+        fputs(phoneBook->info[loop].telNum, fp);
+        fputc('\n', fp);
+    }
+    fclose(fp);
     return 0;
 }
 
@@ -41,7 +82,7 @@ void InitializePhoneBook(PhoneBook * phoneBook){
     phoneBook->content = 0;
     phoneBook->curCapacity = 10;
     phoneBook->info = (PhoneInfo*)calloc(10, sizeof(PhoneInfo));
-    SaveToFile(phoneBook);
+    
 }
 
 void IncCapacityOfPhoneBook(PhoneBook * phoneBook){
@@ -256,8 +297,11 @@ int main(){
     char choice;
     PhoneBook phoneBook;
     
+
+    
+    InitializePhoneBook(&phoneBook);
     if(LoadFromFile(&phoneBook) == -1){
-        InitializePhoneBook(&phoneBook);
+        return -1;
     }
     
     while(1){
